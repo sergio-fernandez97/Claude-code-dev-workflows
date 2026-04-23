@@ -52,7 +52,11 @@ pytest tests/api/routes/test_items.py --collect-only | head -n 5
 ## Before you start
 
 * For using claude code through ollama models: [Claude Code usage with Ollama](https://docs.ollama.com/integrations/claude-code).
-* 
+* Recommended course for a quickstart with Claude Code: [Claude Code in Action course](https://anthropic.skilljar.com/claude-code-in-action/)
+* [Hooks reference](https://code.claude.com/docs/en/hooks)
+* [Connect Claude Code to tools via MCP](https://code.claude.com/docs/en/mcp)
+* [Run parallel Claude Code sessions with Git worktrees](https://code.claude.com/docs/en/common-workflows#run-parallel-claude-code-sessions-with-git-worktrees)
+
 
 
 ## Live Session Guide
