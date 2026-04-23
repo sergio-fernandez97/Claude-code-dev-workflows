@@ -18,11 +18,15 @@ Before the live session, make sure you have:
 For the GitHub Actions audit flow, you need a GitHub repository where Actions can run.
 
 ## Local Setup
+Clone the repo `full-stack-fastapi-template-claude`:
+```
+git clone git@github.com:sergio-fernandez97/full-stack-fastapi-template-claude.git
+```
 
-From the `full-stack-fastapi-template` repository root:
+From the `full-stack-fastapi-template-claude` repository root:
 
 ```bash
-cd full-stack-fastapi-template
+cd full-stack-fastapi-template-claude
 docker compose up --build
 ```
 
