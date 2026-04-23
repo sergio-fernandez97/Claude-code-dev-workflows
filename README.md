@@ -1,258 +1,163 @@
-# Session 3: From GitHub Issue to Tested Feature with Claude Code
+# From GitHub Issue to Tested Feature with Claude Code
 
-This live session shows how to use Claude Code as part of a realistic software development workflow on top of an existing production-style repository. The goal is not to generate code from scratch, but to demonstrate how Claude Code can help read a requirement, analyze an unfamiliar codebase, work safely in isolation, delegate tasks, validate implementation decisions, run tests, and produce a PR-ready outcome.
-
-During the session, the instructor will work against the repository `fastapi/full-stack-fastapi-template` and simulate the full path from issue intake to tested implementation. The main feature example is a small backend enhancement such as adding filtering, pagination, validation, and tests to an existing endpoint. The exact acceptance criteria can be adjusted before the session, but the flow should remain the same.
-
-## Session Goal
-
-By the end of the live session, participants should understand how to:
-
-1. Start from a GitHub issue or feature request.
-2. Explore and summarize an existing codebase safely.
-3. Use Claude Code worktrees to isolate implementation work.
-4. Delegate specialized tasks to subagents.
-5. Use Context7 only when documentation lookup is actually needed.
-6. Enforce quality boundaries with hooks.
-7. Validate the result with tests and GitHub Actions.
-8. Produce a PR-ready summary of the work.
-
-## What Will Be Done
-
-The instructor will:
-
-1. Present a realistic feature request as if it came from GitHub.
-2. Open the target repository and explain the relevant architecture.
-3. Create an isolated Claude Code worktree for the feature.
-4. Delegate parts of the work to subagents with clearly separated roles.
-5. Use Context7 for targeted framework and testing lookups.
-6. Configure or demonstrate hooks that constrain scope and enforce validation.
-7. Implement the feature in the backend.
-8. Add or update tests.
-9. Run local validation commands.
-10. Show how GitHub Actions audits the key checkpoints.
-11. End with a PR-style summary and next steps.
+This live session demonstrates how to use Claude Code as part of a realistic software development workflow on top of an existing production-style repository. The goal is not to generate code from scratch, but to show how Claude Code can help read a requirement, analyze an unfamiliar codebase, work safely in isolation, delegate tasks, validate implementation decisions, run tests, and produce a PR-ready outcome.
 
 ## Prerequisites
 
-### Instructor prerequisites
+Before the live session, make sure you have:
 
-- Access to Claude Code with:
-  - worktree support
-  - subagents
-  - hooks
-  - MCP access
-- Access to the GitHub MCP server
-- Access to the Context7 MCP server
+- Python 3.11+
+- `uv` installed locally
+- Claude Code CLI installed locally
 - Git installed locally
-- Docker and Docker Compose available if the repository setup requires containers
-- Python, Node.js, and any repository-specific dependencies needed by `fastapi/full-stack-fastapi-template`
-- A local clone of this workshop repository
-- A local clone or prepared copy of `fastapi/full-stack-fastapi-template`
-- A GitHub repository where GitHub Actions can run
+- Docker and Docker Compose available
+- A GitHub account with access to create branches
+- A local clone of `fastapi/full-stack-fastapi-template`
+- A local clone or fork of this workshop repository
 
-### Student prerequisites
+For the GitHub Actions audit flow, you need a GitHub repository where Actions can run.
 
-- Basic familiarity with Git, Python, and terminal usage
-- Basic understanding of backend APIs and tests
-- Claude Code installed or available in the environment used for the workshop
-- GitHub account with access to create a branch or fork a repository
+## Local Setup
 
-### Instructor confirmation checklist
-
-Before the live session starts, verify:
-
-- Claude Code can open in the target repository.
-- `claude --worktree` works in the current environment.
-- The GitHub MCP server can read repository and issue context.
-- Context7 can resolve and query documentation.
-- The local test command for the target feature is known and working.
-- GitHub Actions is enabled in the demo repository.
-
-If any of these items are not confirmed ahead of time, mark them in the live session as instructor fill-ins instead of improvising.
-
-## Claude Code Features and Tools Used
-
-The session should explicitly call out the following features and tools:
-
-### Claude Code features
-
-- Main coding assistant session
-- Worktrees via `claude --worktree`
-- Subagents for delegation
-- Hooks for scope and quality enforcement
-- Diff review and PR-style summarization
-
-### MCP tools
-
-- GitHub MCP server
-  - read issue context
-  - inspect repository state
-  - support PR-ready output
-- Context7 MCP server
-  - retrieve authoritative framework references
-  - confirm FastAPI, Pydantic, or pytest usage patterns
-
-### External development tools
-
-- `git`
-- `pytest`
-- optional lint and format commands
-- GitHub Actions
-
-## Session Structure
-
-Total duration: approximately 60 to 90 minutes.
-
-Suggested pacing:
-
-1. Introduction and problem framing: 10 minutes
-2. Repository exploration: 10 to 15 minutes
-3. Isolated setup with worktrees: 10 minutes
-4. Delegation and implementation: 15 to 20 minutes
-5. Testing and GitHub Actions audit: 10 to 15 minutes
-6. Wrap-up and assignment: 10 minutes
-
-## Step-by-Step Live Session Guide
-
-### 1. Introduce the Goal and the Repository
-
-State clearly that this is a real workflow demonstration, not a toy example.
-
-Suggested explanation:
-
-> In this session we will take a realistic issue, inspect a production-style codebase, isolate the work in a Claude Code worktree, delegate tasks to subagents, validate decisions with documentation only when needed, enforce scope with hooks, run tests, and produce a PR-ready result.
-
-Then present the target repository:
+From the `full-stack-fastapi-template` repository root:
 
 ```bash
 cd full-stack-fastapi-template
+docker compose up --build
 ```
 
-Explain why this repo is useful for the demo:
+Once the containers are healthy, confirm the following endpoints are reachable:
 
-- backend API
-- frontend application
-- authentication and users
-- tests
-- realistic project structure
+| Service | Description | URL | Port |
+|---------|-------------|-----|------|
+| **Frontend** | React/Vue web application | http://localhost:5173 | 5173 |
+| **Backend API** | FastAPI REST API | http://localhost:8000 | 8000 |
+| **Backend Docs** | Swagger UI | http://localhost:8000/docs | 8000 |
+| **Adminer** | Database administration UI | http://localhost:8080 | 8080 |
+| **Mailcatcher** | SMTP testing server (web UI) | http://localhost:1080 | 1080 |
 
-Action:
-
-- Show the repository tree at a high level.
-- Highlight the backend paths where the demo will focus.
-
-Example commands:
+Install backend dependencies for local test and lint commands:
 
 ```bash
-pwd
-git status
-find backend -maxdepth 3 -type f | head -n 30
-find frontend -maxdepth 3 -type f | head -n 20
+uv sync
 ```
 
-Instructor note:
+Verify the test suite is ready:
 
-- If you want a more controlled demo, prepare a specific issue in advance and display it here.
+```bash
+cd backend
+pytest tests/api/routes/test_items.py --collect-only | head -n 5
+```
 
-### 2. Present the GitHub Issue or Feature Request
+## Before you start
 
-The session should start from a requirement framed as a GitHub issue.
+* For using claude code through ollama models: [Claude Code usage with Ollama](https://docs.ollama.com/integrations/claude-code).
+* 
 
-The issue should describe a small but realistic backend enhancement. A good example is:
 
-- add filtering to an endpoint
-- add pagination parameters
-- validate invalid query values
-- add or update tests
+## Live Session Guide
 
-Action:
+### 1. Review the repository structure
 
-- Read the issue aloud.
-- Extract explicit acceptance criteria.
-- Write down non-goals.
+Start by reading the files that define the app and the expected behavior:
 
-Suggested acceptance criteria template:
-
-1. Endpoint supports query filtering.
-2. Endpoint supports pagination parameters.
-3. Invalid input returns the expected validation behavior.
-4. Existing patterns in the repository are preserved.
-5. Automated tests cover the new behavior.
-
-Instructor fill-in:
-
-- `[Instructor: insert the exact issue URL, issue number, or copied issue text used in the session.]`
-
-If GitHub MCP is available, explain that the issue context can be read through MCP rather than manually copying everything.
-
-### 3. Explore the Codebase Before Changing Anything
-
-This step is important because participants should see that Claude Code is used to understand a codebase before editing it.
-
-Action:
-
-1. Ask Claude Code to summarize the relevant architecture.
-2. Identify the API route file.
-3. Identify related models, schemas, or validation logic.
-4. Identify the test files that should be updated.
-
-Suggested exploration targets in this repository:
-
-- `backend/app/api/routes/`
-- `backend/app/models.py`
+- `backend/app/main.py`
+- `backend/app/api/routes/items.py`
 - `backend/app/crud.py`
-- `backend/tests/api/routes/`
+- `backend/app/models.py`
+- `backend/tests/api/routes/test_items.py`
 
-Suggested prompts for the live session:
+Current structure:
 
-- "Summarize the backend architecture relevant to this endpoint."
-- "Identify the files involved in adding filtering and pagination to this route."
-- "List the tests that should change if we implement this feature."
+- `backend/app/` contains the FastAPI app, routes, models, CRUD layer, and service layer.
+- `backend/tests/` contains API and service tests.
+- `.claude/` contains Claude Code settings, hooks, and agent definitions.
+- `.github/workflows/` runs CI on GitHub.
+- `CLAUDE.md` defines project-specific instructions for Claude Code.
 
-Expected teaching point:
-
-- Claude Code should help narrow scope before implementation starts.
-
-### 4. Create an Isolated Claude Code Worktree
-
-This is one of the main teaching moments of the session.
+### 2. Baseline: run tests locally
 
 Run:
 
 ```bash
-claude --worktree feature-search-pagination
+cd backend
+pytest tests/api/routes/test_items.py -q
 ```
 
-Explain what this does:
+For the demo, the tests should pass first. This green baseline is the starting point for every feature we will add.
 
-- creates a dedicated git branch
-- creates an isolated working directory
-- starts Claude Code in that isolated environment
+### 3. Generate feature proposals in isolated worktrees
 
-Explain why this matters:
+Before writing code, identify small, realistic feature requests. Use Claude Code worktrees to keep each proposal isolated.
 
-- avoids accidental edits in the main working tree
-- makes the feature self-contained
-- supports parallel work
-
-Also show the no-name version:
+Open a separate Claude Code session in worktree mode:
 
 ```bash
+cd full-stack-fastapi-template
 claude --worktree
 ```
 
-Instructor fill-in:
+Inside the worktree session, delegate the analysis task:
 
-- `[Instructor: confirm the exact local path where Claude stores worktrees in the installed version used for the workshop. The draft assumes .claude/worktrees/<name>/, but this should be verified live or updated here beforehand.]`
+```text
+Analyze the repository and create four isolated worktrees.
+In each worktree, write a PROPOSAL.md that describes a single GitHub issue or feature request
+suitable for a 15-minute live coding session. Keep each proposal brief: state the problem,
+list 3-5 acceptance criteria, and note non-goals. Do not describe the full solution yet.
+Reference the repository README for scope guidance.
+```
 
-Action:
+Expected result: four directories under `.claude/worktrees/`, each containing a `PROPOSAL.md` with a clear issue title, a short problem statement, numbered acceptance criteria, and explicit non-goals.
 
-1. Show the current branch before the command.
-2. Run the worktree command.
-3. Show the new branch and directory after the command.
+Verify the created worktrees:
 
-Suggested verification commands:
+```bash
+git worktree list
+```
+
+Example worktrees for this session:
+
+- `proposal-item-search`
+- `proposal-item-sorting`
+- `proposal-item-stats`
+- `proposal-soft-delete`
+
+**Teaching point:** Worktrees let you explore multiple ideas in parallel without polluting the main working tree. Each `PROPOSAL.md` acts as a contract: it defines what will be built before implementation starts.
+
+### 3a. Understanding Git Worktree mechanics
+
+> Git worktree allows you to have multiple working directories for the same repository, each checked out to a different branch. Think of it as multiple copies of your project that all share the same Git history.
+
+![Git worktree diagram](./images/git_worktree.jpg.png)
+*[Claude Code Worktrees in 7 Minutes](https://www.youtube.com/watch?v=z_VI51k-tn0&t=85s)*
+
+`claude --worktree` automates what you would otherwise do manually:
+
+```bash
+# Create a worktree manually
+git worktree add ../project-feature-a
+
+# Start Claude in that directory
+cd ../project-feature-a && claude
+
+# Clean up when done
+git worktree list
+git worktree remove ../project-feature-a
+```
+
+**Teaching point:** `claude --worktree` handles branch creation, directory setup, and isolation automatically. Each worktree is a complete directory where you can edit, test, and commit without affecting other worktrees.
+
+### 4. Select one proposal and enter its worktree
+
+For the live demo, pick one proposal. Example: `proposal-item-search`.
+
+Enter the worktree:
+
+```bash
+claude --worktree proposal-item-search
+```
+
+Verify isolation:
 
 ```bash
 git branch --show-current
@@ -261,59 +166,77 @@ git worktree list
 git status
 ```
 
-### 5. Define Subagent Roles
+Read the acceptance criteria before any code is written:
 
-The purpose of this step is to show that Claude Code can divide work into specialized roles instead of using one long monolithic prompt.
+```bash
+cat PROPOSAL.md
+```
+
+Confirm the proposal contains:
+
+1. A concrete endpoint or feature target.
+2. 3-5 acceptance criteria.
+3. Explicit non-goals or scope boundaries.
+4. A reference to the files likely to change.
+
+### 5. Explore the codebase before changing anything
+
+This step is important because participants should see that Claude Code is used to understand a codebase before editing it.
+
+Suggested prompts for the live session:
+
+- "Summarize the backend architecture relevant to this endpoint."
+- "Identify the files involved in adding filtering and pagination to this route."
+- "List the tests that should change if we implement this feature."
+
+Run exploratory commands:
+
+```bash
+find backend -maxdepth 3 -type f | head -n 30
+```
+
+Expected exploration targets:
+
+- `backend/app/api/routes/`
+- `backend/app/models.py`
+- `backend/app/crud.py`
+- `backend/tests/api/routes/`
+
+Teaching point: Claude Code should narrow scope before any file is modified.
+
+### 6. Delegate implementation to subagents
+
+Divide the work into specialized roles instead of one long monolithic prompt.
 
 Recommended roles:
 
-1. Planner
-2. Implementer
-3. Tester
-4. Reviewer
+1. **Planner** — interpret the issue, define scope, identify files to edit.
+2. **Implementer** — modify the code, preserve repository conventions, avoid unrelated changes.
+3. **Tester** — add or update automated tests, identify edge cases.
+4. **Reviewer** — inspect the result, check for regressions or missing coverage.
 
-Suggested responsibilities:
+Action: Explain each role before delegation. Show at least one concrete delegation example in the live session.
 
-- Planner
-  - interpret the issue
-  - define scope
-  - identify files to edit
-- Implementer
-  - modify the code
-  - preserve repository conventions
-  - avoid unrelated changes
-- Tester
-  - add or update automated tests
-  - identify edge cases
-- Reviewer
-  - inspect the result
-  - check for regressions or missing coverage
+Example subagent invocation:
 
-Action:
+```text
+Use the issue-scope-planner agent to analyze the issue, inspect the codebase, identify relevant
+route handlers, CRUD functions, models, and test files, and define the precise scope before any
+coding begins.
+```
 
-- Explain each role before delegation.
-- Show at least one concrete delegation example in the live session.
-
-Instructor fill-in:
-
-- `[Instructor: replace this section with the exact subagent invocation syntax supported by the Claude Code version used during the workshop if you want to show commands instead of describing the interaction conceptually.]`
-
-### 6. Use Context7 Selectively
-
-This step demonstrates disciplined documentation lookup.
+### 7. Use Context7 selectively
 
 Use Context7 only when a question cannot be answered confidently from the local codebase.
 
 Good examples:
 
-- FastAPI query parameter patterns
-- pagination parameter conventions
-- Pydantic validation behavior
-- pytest fixture or test style examples
+- FastAPI query parameter patterns.
+- Pagination parameter conventions.
+- Pydantic validation behavior.
+- pytest fixture or test style examples.
 
-Bad example:
-
-- querying documentation for patterns that are already obvious from the repository itself
+Bad example: querying documentation for patterns already obvious from the repository itself.
 
 Action:
 
@@ -321,48 +244,63 @@ Action:
 2. Query Context7 for that exact point.
 3. Apply the result conservatively.
 
-Teaching point:
+Teaching point: documentation lookup should support implementation, not replace reasoning.
 
-- Documentation lookup should support implementation, not replace reasoning.
+### 8. Enforce scope with hooks
 
-Instructor fill-in:
+Hooks should be presented as workflow constraints, not decoration.
 
-- `[Instructor: insert one concrete Context7 lookup you want to demo, for example a FastAPI query parameter example or a pytest validation pattern.]`
+#### Hook 1: Scope reminder
 
-### 7. Configure Hooks as Guardrails
+Runs before every user prompt to keep allowed paths visible.
 
-Hooks should be presented as workflow constraints, not as decoration.
+Configuration in `.claude/settings.json`:
 
-Recommended demo hooks:
+```json
+{
+  "name": "scope-reminder",
+  "command": "bash .claude/hooks/scope-reminder.sh",
+  "timeout": 5000
+}
+```
 
-### Hook 1: Scope guard
+#### Hook 2: Scope guard
 
-Allow changes only in:
+Runs after every tool use to detect out-of-scope changes.
 
-- `backend/app/**`
-- `backend/tests/**`
+Configuration in `.claude/settings.json`:
 
-This makes it obvious when the assistant drifts outside the intended scope.
+```json
+{
+  "name": "scope-guard",
+  "command": "bash .claude/hooks/scope-guard.sh",
+  "timeout": 10000
+}
+```
 
-### Hook 2: Post-change validation
+#### Hook 3: Backend validation
 
-Run targeted validation after edits, such as:
+Runs after every tool use to lint modified Python files.
 
-- backend tests
-- lint or format checks if appropriate
+Configuration in `.claude/settings.json`:
+
+```json
+{
+  "name": "backend-validation",
+  "command": "bash .claude/hooks/backend-validation.sh",
+  "timeout": 30000
+}
+```
 
 Action:
 
-1. Explain the purpose of the hooks.
+1. Explain the purpose of each hook.
 2. Show the configuration or pseudo-configuration.
 3. Trigger behavior at least once if possible.
 
-Instructor fill-in:
+If hook support is not stable in your environment, present this section as a conceptual design and show the equivalent validation commands manually.
 
-- `[Instructor: insert the exact hook configuration syntax and command used by the Claude Code version in your environment.]`
-- `[Instructor: if hook support is not stable in your environment, present this section as a conceptual design and show the equivalent validation commands manually.]`
-
-### 8. Implement the Feature
+### 9. Implement the feature
 
 At this point the instructor should already have:
 
@@ -388,32 +326,22 @@ Action:
 3. Validate invalid inputs using the repository's existing conventions.
 4. Preserve existing naming, response, and test patterns.
 
-Suggested live narration:
+Suggested narration:
 
 > We are not trying to invent a new architecture. We are extending the existing design in the smallest coherent way.
 
-Instructor fill-in:
+### 10. Run local validation
 
-- `[Instructor: replace the example file list above if you choose a different endpoint for the live session.]`
+This step should be explicit and visible. The audience should see that changes are validated, not just assumed to work.
 
-### 9. Run Local Validation
-
-This step should be explicit and visible.
-
-The audience should see that changes are validated, not just assumed to work.
-
-At minimum, run targeted tests for the affected backend area.
-
-Possible commands in this repository:
+At minimum, run targeted tests for the affected backend area:
 
 ```bash
 cd backend
-pytest tests/api/routes/test_items.py
+pytest tests/api/routes/test_items.py -q
 ```
 
-If the repository requires containerized commands, use the appropriate local equivalent instead.
-
-Possible alternative commands:
+If the repository requires containerized commands, use the appropriate local equivalent instead:
 
 ```bash
 ./scripts/test.sh
@@ -427,154 +355,106 @@ Optional additional validation:
 ./scripts/format.sh
 ```
 
-Instructor fill-in:
-
-- `[Instructor: confirm the exact test command that is known to pass in the prepared environment and replace the examples above if necessary.]`
-- `[Instructor: if Docker Compose is required for the live demo, document the startup command here.]`
-
-### 10. Audit the Main Steps with GitHub Actions
-
-The session should make it clear that the workflow is not complete until CI checks the important parts.
-
-The GitHub Actions workflow for this session should audit these checkpoints:
-
-1. The change is restricted to the intended backend paths.
-2. The relevant tests run successfully.
-3. Optional lint or format checks pass.
-4. A summary artifact or step log makes the session checkpoints visible.
-
-Recommended audit points:
-
-- Step 1: repository checkout
-- Step 2: dependency setup
-- Step 3: backend test execution
-- Step 4: path or diff guard
-- Step 5: optional linting
-- Step 6: final workflow summary
-
-Suggested workflow responsibilities:
-
-- fail if files outside allowed paths were modified
-- fail if backend tests do not pass
-- record which session checkpoint failed
-
-Instructor fill-in:
-
-- `[Instructor: add the exact workflow filename, trigger, and status badge used for this workshop repository.]`
-- `[Instructor: if you want the workflow to validate path scope, add a job or script that inspects git diff and fails on unauthorized paths.]`
-
-Suggested explanation to students:
-
-> Claude Code helps us move faster, but GitHub Actions remains the external audit layer that verifies the result independently of the local session.
-
-### 11. Inspect the Diff and Produce a PR-Ready Summary
-
-Before closing the session:
-
-1. Show the changed files.
-2. Review the diff briefly.
-3. Summarize the implementation in PR language.
-
-Suggested commands:
+Review the diff before committing:
 
 ```bash
-git status
 git diff --stat
 git diff
 ```
 
-Suggested PR summary structure:
+Checklist:
 
-1. What changed
-2. Why it changed
-3. Tests added or updated
-4. Known limitations
+- Only the intended files appear in the diff.
+- No unrelated formatting or refactoring is mixed in.
+- Test additions are visible.
 
-Instructor fill-in:
+Teaching point: a clean diff is a reviewable diff. If the diff contains surprises, revert and redo.
 
-- `[Instructor: if you want to end with an actual draft PR, add the exact GitHub or MCP-based action here.]`
+### 11. Consolidate all features and push to the current branch
 
-### 12. Wrap Up the Main Takeaway
+After all four issues are solved in their respective worktrees:
+
+1. Exit each worktree and return to the main working tree.
+2. Merge or apply the changes from each worktree branch into the current branch.
+3. Resolve any conflicts if the same files were touched.
+4. Run the full test suite one final time.
+5. Push the consolidated current branch to the remote.
+
+```bash
+git worktree list
+git checkout main
+git merge proposal-item-search
+git merge proposal-item-sorting
+git merge proposal-item-stats
+git merge proposal-soft-delete
+pytest tests/
+git push origin main
+```
+
+PR summary structure:
+
+1. What changed (all four features).
+2. Why it changed.
+3. Tests added or updated.
+4. Known limitations.
+
+### 13. Wrap up the main takeaway
 
 Close with the core message of the session:
 
 > Claude Code is not only useful for generating code. It is useful for orchestrating a safe, auditable, real development workflow.
 
-Reinforce the four main ideas:
+Reinforce the five main ideas:
 
-1. isolate with worktrees
-2. delegate with subagents
-3. validate with tests and hooks
-4. audit with GitHub Actions
+1. **Isolate** with worktrees and a local `PROPOSAL.md`.
+2. **Delegate** with subagents.
+3. **Validate** with tests and hooks.
+4. **Audit** with GitHub Actions.
+5. **Consolidate** and push all completed features to the current branch.
 
-## Commands Summary
+## How the Session Workflow Works
 
-These are the main commands that should appear during the session. Replace any command that differs in your prepared environment.
+This session demonstrates three complementary layers:
 
-```bash
-cd full-stack-fastapi-template
-git status
-git branch --show-current
-claude --worktree feature-search-pagination
-git worktree list
-pwd
-find backend -maxdepth 3 -type f | head -n 30
-cd backend
-pytest tests/api/routes/test_items.py
-git diff --stat
-git diff
-```
+1. **Local development with Claude Code:**
+   Read a GitHub issue, explore the codebase, isolate work in a Claude Code worktree, delegate to subagents, validate with tests, and produce a clean diff.
 
-Optional commands depending on environment:
+2. **Hooks as guardrails:**
+   Configure `beforeUserPromptSubmit` and `afterToolUse` hooks to remind about scope, guard against out-of-scope edits, and run fast validation after every change.
 
-```bash
-./scripts/test.sh
-./scripts/test-local.sh
-./scripts/lint.sh
-./scripts/format.sh
-docker compose up -d
-```
+Important rules for all modes:
 
-## Live Session Checklist
+- Do not edit before identifying the relevant route, model, CRUD, and test files.
+- Prefer extending existing architecture over inventing new abstractions.
+- Preserve naming, validation, and response patterns already used in the codebase.
+- Avoid unrelated refactors unless the issue explicitly requires them.
 
-Use this checklist during the session:
+## Challenge for Students
 
-- The issue is visible and acceptance criteria are explicit.
-- The repository is explored before editing.
-- The feature is implemented inside a Claude worktree.
-- At least one delegation example is shown.
-- At least one Context7 lookup is shown.
-- Hooks or equivalent guardrails are discussed and demonstrated.
-- Tests are run locally.
-- GitHub Actions is shown as the audit layer.
-- A PR-style summary is produced at the end.
+### Objective
 
-## Student Practical Assignment
+Reproduce the same workflow on a small variation of the live task. Each student must take four small backend requirements, implement each in isolation with Claude Code, validate them with tests, and consolidate the changes into a single push to the current branch.
 
-Each student should reproduce the same workflow on a small variation of the live task.
+### Deliverables
 
-### Assignment goal
+Each student should submit:
 
-Students must take a small backend requirement, implement it in isolation with Claude Code, validate it with tests, and summarize it as if preparing a pull request.
+1. The issue statements or feature requests they worked from.
+2. The Claude worktree names they used and the path to each `PROPOSAL.md`.
+3. The list of files they changed.
+4. The test commands they ran.
+5. Proof that the consolidated branch was pushed to the remote.
+6. A short PR-style summary.
 
-### Assignment instructions
+### Step-by-Step Assignment
 
-1. Choose an existing backend endpoint in `fastapi/full-stack-fastapi-template` or in another approved repository.
-2. Define a small feature request with 3 to 5 acceptance criteria.
-3. Create a dedicated Claude Code worktree for the task.
-4. Ask Claude Code to identify the files relevant to the change before editing anything.
-5. Use at least one subagent or delegated role.
-6. Use Context7 only if you hit a real uncertainty.
-7. Keep the change scoped to the minimum necessary files.
-8. Add or update automated tests.
-9. Run the relevant test command locally.
-10. Produce a short PR summary with:
-   - what changed
-   - why it changed
-   - how it was tested
-   - what remains uncertain
+#### 1. Choose an endpoint
 
-### Suggested student feature ideas
+Select an existing backend endpoint in `fastapi/full-stack-fastapi-template` or in another approved repository.
+
+#### 2. Define four feature requests
+
+For each feature request, write 3 to 5 acceptance criteria. Examples:
 
 - add a new query filter to an existing endpoint
 - add pagination parameters to a list endpoint
@@ -582,36 +462,101 @@ Students must take a small backend requirement, implement it in isolation with C
 - add one missing negative test case to an existing route
 - improve response handling for an edge case already covered by the codebase patterns
 
-### Required student deliverables
+#### 3. Create a Claude Code worktree for each task
 
-Each student should submit:
+```bash
+claude --worktree feature-a
+claude --worktree feature-b
+claude --worktree feature-c
+claude --worktree feature-d
+```
 
-1. The issue statement or feature request they worked from.
-2. The Claude worktree name they used.
-3. The list of files they changed.
-4. The test command they ran.
-5. A short PR-style summary.
+#### 4. Write a PROPOSAL.md in each worktree
 
-### Evaluation rubric
+Each `PROPOSAL.md` must document:
 
-Assess the work using these questions:
+- the issue and acceptance criteria
+- the expected files to change
+- explicit non-goals
 
-1. Was the scope defined before implementation began?
-2. Was the work isolated in a worktree?
-3. Was the change limited to relevant files?
-4. Were repository conventions preserved?
-5. Were tests added or updated?
-6. Was the final summary clear and reviewable?
+#### 5. Explore before editing
 
-## Instructor Fill-Ins to Complete Before the Session
+Before modifying any file, ask Claude Code to identify the relevant route, model, CRUD, and test files.
 
-Replace the placeholders in this document before teaching:
+#### 6. Delegate to subagents
 
-- exact issue URL or issue text
-- exact worktree storage path if it differs from the draft assumption
-- exact subagent invocation syntax if it will be demonstrated
-- exact hook configuration syntax if hooks will be demonstrated live
-- exact Context7 lookup example
-- exact local test command
-- exact GitHub Actions workflow filename and trigger
-- exact PR creation step if the session includes opening a draft PR
+Use at least one subagent or delegated role per feature. Example roles:
+
+- `issue-scope-planner`
+- `code-implementer`
+- `fastapi-test-writer`
+- `regression-coverage-reviewer`
+
+#### 7. Use Context7 only when needed
+
+If you hit a real uncertainty about FastAPI, Pydantic, or pytest behavior, query Context7. Do not query documentation for patterns already visible in the repository.
+
+#### 8. Keep changes scoped
+
+Each change should be limited to the minimum necessary files. Hooks or manual checks should enforce this.
+
+#### 9. Add or update automated tests
+
+Every feature must have tests that run with a single command:
+
+```bash
+cd backend
+pytest tests/api/routes/test_items.py -q
+```
+
+#### 10. Validate locally in each worktree
+
+Run tests and, if available, lint checks before exiting the worktree.
+
+#### 11. Consolidate and push
+
+Once all four features are solved:
+
+```bash
+git checkout main
+git merge feature-a
+git merge feature-b
+git merge feature-c
+git merge feature-d
+pytest tests/
+git push origin main
+```
+
+#### 12. Produce a PR summary
+
+The summary must include:
+
+- what changed
+- why it changed
+- how it was tested
+- what remains uncertain
+
+### Success Criteria
+
+You pass the assignment if your repository demonstrates all of the following:
+
+- Four issues with explicit acceptance criteria.
+- Each feature is implemented inside its own Claude worktree with a local `PROPOSAL.md`.
+- At least one subagent delegation per feature.
+- Context7 is used selectively, not as a replacement for reasoning.
+- Hooks or equivalent guardrails are configured or described.
+- Tests are run locally in each worktree.
+- GitHub Actions is shown as the audit layer.
+- All four features are consolidated and pushed to the current branch.
+- A PR-style summary is produced at the end.
+
+### Bonus
+
+Configure a GitHub Actions workflow that fails if files outside `backend/app/**` and `backend/tests/**` are modified in a pull request.
+
+## Reference
+
+- [Git worktree + Claude Code: My Secret to 10x Developer Productivity](https://dev.to/kevinz103/git-worktree-claude-code-my-secret-to-10x-developer-productivity-520b)
+- [Claude Code Worktrees in 7 Minutes](https://www.youtube.com/watch?v=z_VI51k-tn0&t=85s)
+- [Claude Code Hooks Reference](https://code.claude.com/docs/en/hooks)
+- [Claude Code Cheat Sheet](https://academy.dair.ai/claude-code-cheat-sheet)
